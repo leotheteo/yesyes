@@ -17,7 +17,7 @@ export function Settings() {
             <p className="font-medium">{snapshot.user.name}</p>
             <p className="subtle mt-2 break-all">{snapshot.user.email}</p>
             <p className="subtle mt-4">
-              Timezone: Pacific (America/Los_Angeles)
+              Pacific time
             </p>
           </section>
           <section className="panel">
@@ -35,7 +35,7 @@ export function Settings() {
         {snapshot.isOwner && (
           <div className="grid gap-6">
             <section className="panel">
-              <h2 className="mb-6 text-xl font-semibold">Account links</h2>
+              <h2 className="mb-6 text-xl font-semibold">Invites and password resets</h2>
               <form
                 className="grid gap-4"
                 onSubmit={(e) => {
@@ -91,21 +91,21 @@ export function Settings() {
               )}
             </section>
             {(["seerr", "jellyfin", "google"] as const).map((id) => (
-              <section key={id} className="panel">
-                <div className="mb-6 flex items-center justify-between gap-4">
-                  <h2 className="text-xl font-semibold">
+              <details key={id} className="panel connection">
+                <summary className="flex items-center gap-3">
+                  <span className="grow font-semibold">
                     {id === "seerr"
                       ? "Seerr"
                       : id === "jellyfin"
                         ? "Jellyfin"
                         : "Google Places"}
-                  </h2>
+                  </span>
                   <span className="tag">
                     {snapshot.integrations.includes(id)
                       ? "Configured"
                       : "Not connected"}
                   </span>
-                </div>
+                </summary>
                 <form
                   className="grid gap-4"
                   onSubmit={(e) => {
@@ -198,7 +198,7 @@ export function Settings() {
                     )}
                   </div>
                 </form>
-              </section>
+              </details>
             ))}
           </div>
         )}

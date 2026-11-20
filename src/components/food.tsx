@@ -23,7 +23,7 @@ export function Food() {
   const polls = records(snapshot, "voteSession");
   return (
     <>
-      <PageTitle title="Food" detail="Restaurants and family votes" />
+      <PageTitle title="Food" />
       <div className="mb-8 flex gap-2" role="group" aria-label="Food view">
         <Button
           variant={tab === "votes" ? "secondary" : "ghost"}

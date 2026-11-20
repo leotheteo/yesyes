@@ -24,7 +24,7 @@ export function Media() {
   const [selectedSeason, setSelectedSeason] = useState(0);
   return (
     <>
-      <PageTitle title="Media" detail="Movies and TV" />
+      <PageTitle title="Media" />
       {!snapshot.integrations.includes("seerr") ? (
         <section className="panel mb-8">
           <FilmSlate size={32} className="text-primary" />

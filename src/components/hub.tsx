@@ -14,7 +14,6 @@ import {
   X,
 } from "@phosphor-icons/react";
 import type { HubRecord, Snapshot } from "@/lib/models";
-import { TIME_ZONE } from "@/lib/calendar";
 import { api, HubContext } from "./context";
 import { Button } from "./ui/button";
 import { SignIn } from "./sign-in";
@@ -358,23 +357,6 @@ export function Hub({ section = "home" }: { section?: string }) {
             </>
           )}
         </main>
-        <footer className="subtle mt-16 flex flex-wrap justify-between gap-4 border-t border-border pt-6">
-          <span>
-            Pacific time ·{" "}
-            {new Intl.DateTimeFormat("en-US", {
-              timeZone: TIME_ZONE,
-              timeZoneName: "short",
-            }).format(new Date())}
-          </span>
-          <div className="flex gap-4">
-            <Link href="/privacy" className="hover:underline">
-              Privacy
-            </Link>
-            <Link href="/terms" className="hover:underline">
-              Terms
-            </Link>
-          </div>
-        </footer>
       </div>
     </HubContext.Provider>
   );

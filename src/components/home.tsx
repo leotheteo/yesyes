@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { formatInTimeZone } from "date-fns-tz";
 import { addDays, format } from "date-fns";
-import { CalendarBlank, Basket, ForkKnife, Plus } from "@phosphor-icons/react";
+import { CalendarBlank, Basket, ForkKnife, FilmSlate, Plus } from "@phosphor-icons/react";
 import { occurrences, pacificDate, TIME_ZONE } from "@/lib/calendar";
 import { records, useHub } from "./context";
 import { Empty, PageTitle } from "./common";
@@ -28,7 +28,8 @@ export function Home() {
       <PageTitle
         title={formatInTimeZone(new Date(), TIME_ZONE, "EEEE, MMMM d")}
       />
-      <div className="grid items-start gap-6 lg:grid-cols-[1.5fr_1fr]">
+      <div className="grid items-start gap-6 dashboard lg:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)]">
+        <div className="grid min-w-0 gap-6">
         <section className="panel">
           <div className="mb-6 flex items-center justify-between gap-4">
             <h2 className="flex items-center gap-3 text-xl font-semibold">
@@ -60,7 +61,7 @@ export function Home() {
                 key={`${e.eventId}:${e.date}`}
                 href={`/calendar?event=${e.eventId}`}
               >
-                <div className="w-12 shrink-0 text-center">
+                <div className="w-14 shrink-0 rounded-lg bg-secondary py-2 text-center">
                   <div className="meta-label">
                     {formatInTimeZone(new Date(e.start), TIME_ZONE, "MMM")}
                   </div>
@@ -86,7 +87,17 @@ export function Home() {
             ))
           )}
         </section>
-        <div className="grid gap-6">
+      <section className="panel">
+        <div className="mb-6 flex items-center justify-between gap-4">
+          <h2 className="flex items-center gap-3 text-xl font-semibold"><FilmSlate className="text-primary" size={24} />Recently added</h2>
+          <Link href="/media" className="text-sm text-primary hover:underline">
+            Media
+          </Link>
+        </div>
+        <RecentMedia />
+      </section>
+        </div>
+        <div className="grid min-w-0 gap-6">
           <section className="panel">
             <div className="mb-4 flex items-center justify-between gap-4">
               <h2 className="flex items-center gap-3 text-xl font-semibold">
@@ -171,15 +182,7 @@ export function Home() {
           </section>
         </div>
       </div>
-      <section className="panel mt-6">
-        <div className="mb-6 flex items-center justify-between gap-4">
-          <h2 className="text-xl font-semibold">Recently added</h2>
-          <Link href="/media" className="text-sm text-primary hover:underline">
-            Media
-          </Link>
-        </div>
-        <RecentMedia />
-      </section>
+
     </>
   );
 }

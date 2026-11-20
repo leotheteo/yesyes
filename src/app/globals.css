@@ -61,8 +61,8 @@ textarea {
 a,
 summary {
   transition:
-    color 700ms cubic-bezier(0.32, 0.72, 0, 1),
-    background-color 700ms cubic-bezier(0.32, 0.72, 0, 1);
+    color 160ms cubic-bezier(0.32, 0.72, 0, 1),
+    background-color 160ms cubic-bezier(0.32, 0.72, 0, 1);
 }
 a:focus-visible,
 summary:focus-visible,
@@ -110,7 +110,8 @@ summary {
   cursor: pointer;
 }
 .panel {
-  background: #1f1f1f;
+  background: #202321;
+  border: 1px solid #353b37;
   border-radius: 12px;
   padding: 24px;
   min-width: 0;
@@ -193,4 +194,52 @@ summary {
     animation: none !important;
     transition: none !important;
   }
+}
+
+.connection summary { list-style: none; }
+.connection summary::-webkit-details-marker { display: none; }
+.connection summary::after {
+  content: "";
+  width: .5rem;
+  height: .5rem;
+  border: solid var(--primary);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+  margin: 0 .25rem;
+}
+.connection[open] summary::after { transform: rotate(225deg); }
+.connection form { border-top: 1px solid var(--border); padding-top: 1.25rem; margin-top: 1rem; }
+@media (prefers-reduced-motion: no-preference) {
+  .connection summary::after { transition: transform 150ms ease; }
+  .connection[open] form, #content > :first-child { animation: settle 180ms ease-out; }
+  @keyframes settle {
+    from { opacity: .65; transform: translateY(3px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+}
+
+select:not([multiple]):not([size]) {
+  appearance: none;
+  min-height: 44px;
+  padding-inline-end: 2.75rem;
+  border-color: #48534c;
+  border-radius: 8px;
+  background-color: #191d1a;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='m4 6 4 4 4-4' fill='none' stroke='%23adc1b4' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-size: 16px;
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+}
+select:enabled:hover { border-color: var(--primary); }
+summary::marker { color: var(--primary); }
+.dashboard .panel > div:first-child:has(h2) {
+  margin-bottom: .75rem;
+  padding-bottom: .875rem;
+  border-bottom: 1px solid #353b37;
+}
+.dashboard h2 { font-size: 1.05rem; }
+.dashboard .empty { padding-block: .75rem; }
+.dashboard .row { padding-block: .75rem; }
+@media (forced-colors: active) {
+  select:not([multiple]):not([size]) { appearance: auto; background-image: none; }
 }

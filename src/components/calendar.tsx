@@ -99,7 +99,6 @@ export function Calendar() {
     <>
       <PageTitle
         title="Calendar"
-        detail="Game days, practice, café events, birthdays"
       />
       <ToggleForm label="Create event">
         {(close) => <EventForm initialDate={day || today} close={close} />}
