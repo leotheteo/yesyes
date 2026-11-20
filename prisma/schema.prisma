@@ -1,0 +1,158 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id            String    @id
+  name          String
+  email         String    @unique
+  emailVerified Boolean   @default(false)
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  sessions      Session[]
+  accounts      Account[]
+}
+
+model Session {
+  id        String   @id
+  expiresAt DateTime
+  token     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@index([userId])
+}
+
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([identifier])
+}
+
+model Household {
+  id        String   @id @default("family")
+  name      String   @default("Family")
+  ownerId   String?  @unique
+  revision  Int      @default(0)
+  createdAt DateTime @default(now())
+}
+
+// JSON documents are schema-validated by kind before every write.
+// All household mutations increment Household.revision in the same transaction.
+model Record {
+  id        String    @id @default(cuid())
+  kind      String
+  data      Json
+  revision  Int       @default(1)
+  createdBy String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([kind, deletedAt])
+}
+
+model AccessLink {
+  id        String    @id @default(cuid())
+  tokenHash String    @unique
+  kind      String
+  email     String?
+  userId    String?
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+}
+
+model Integration {
+  id        String   @id
+  encrypted String
+  updatedAt DateTime @updatedAt
+}
+
+model Attachment {
+  id          String   @id
+  eventId     String
+  filename    String
+  contentType String
+  size        Int
+  storageKey  String   @unique
+  uploadedBy  String
+  createdAt   DateTime @default(now())
+
+  @@index([eventId])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  dedupeKey String   @unique
+  title     String
+  eventId   String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId, read])
+}
+
+model MediaRequest {
+  id         String   @id @default(cuid())
+  key        String   @unique
+  tmdbId     Int
+  mediaType  String
+  season     Int      @default(0)
+  title      String
+  userId     String
+  externalId Int?
+  status     String   @default("submitting")
+  error      String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model RateBucket {
+  key       String   @id
+  count     Int      @default(1)
+  expiresAt DateTime
+
+  @@index([expiresAt])
+}
+
+model RateLimit {
+  id          String @id
+  key         String @unique
+  count       Int
+  lastRequest BigInt
+}

@@ -1,0 +1,68 @@
+name: family
+x-app: &app
+  build: .
+  image: family-hub:local
+  env_file: .env
+  environment:
+    DATABASE_URL: postgresql://family:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}@db:5432/family
+    UPLOAD_DIR: /data/uploads
+  init: true
+  security_opt:
+    - no-new-privileges:true
+
+services:
+  db:
+    image: postgres:18-bookworm
+    environment:
+      POSTGRES_USER: family
+      POSTGRES_DB: family
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+    volumes:
+      - database:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U family -d family"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+  migrate:
+    <<: *app
+    command: ["npm", "run", "db:migrate"]
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+  web:
+    <<: *app
+    ports:
+      - "${BIND_ADDRESS:-0.0.0.0}:${PORT:-3000}:3000"
+    volumes:
+      - attachments:/data/uploads
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+  worker:
+    <<: *app
+    command: ["npm", "run", "worker"]
+    volumes:
+      - attachments:/data/uploads
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+volumes:
+  database:
+  attachments:
