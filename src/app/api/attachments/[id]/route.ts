@@ -2,20 +2,13 @@ import { db } from "@/lib/db";
 import { assert } from "@/lib/errors";
 import { failure, json, member, origin } from "@/lib/http";
 import { loadFile, removeFile } from "@/lib/uploads";
+import { attachment } from "@/lib/attachments";
 type Context = { params: Promise<{ id: string }> };
 export async function GET(_request: Request, context: Context) {
   try {
     await member();
     const { id } = await context.params;
-    const file = await db.attachment.findUnique({ where: { id } });
-    assert(file, 404, "File no longer exists. Refresh the event.");
-    assert(
-      await db.record.findFirst({
-        where: { id: file.eventId, kind: "event", deletedAt: null },
-      }),
-      404,
-      "Event no longer exists.",
-    );
+    const file = await attachment(id);
     const buffer = await loadFile(file.storageKey);
     return new Response(new Uint8Array(buffer), {
       headers: {

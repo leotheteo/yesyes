@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { fromZonedTime, formatInTimeZone } from "date-fns-tz";
 import { DiceFive, ForkKnife, Heart, Prohibit } from "@phosphor-icons/react";
 import type { HubRecord } from "@/lib/models";
@@ -20,6 +20,18 @@ import { Input } from "./ui/input";
 export function Food() {
   const { snapshot } = useHub();
   const [tab, setTab] = useState("votes");
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).has("restaurant"))
+      setTab("restaurants");
+  }, []);
+  useEffect(() => {
+    if (window.location.hash)
+      requestAnimationFrame(() =>
+        document
+          .getElementById(window.location.hash.slice(1))
+          ?.scrollIntoView({ block: "center" }),
+      );
+  }, [tab]);
   const polls = records(snapshot, "voteSession");
   return (
     <>
@@ -93,7 +105,7 @@ function RestaurantPanel({
       (p) => p.data.restaurantId === r.id && p.data.userId === snapshot.user.id,
     )?.data.value ?? "neutral";
   return (
-    <article className="panel">
+    <article id={r.id} className="panel">
       <div className="mb-4 flex items-start justify-between gap-4">
         <div className="min-w-0">
           <h2 className="break-words text-xl font-semibold">{r.data.name}</h2>
@@ -507,7 +519,7 @@ function VotePanel({ poll }: { poll: HubRecord<"voteSession"> }) {
     );
   const selected = restaurants.find((r) => r.id === s.selectedId);
   return (
-    <section className="panel">
+    <section id={poll.id} className="panel">
       <div className="mb-6 flex flex-wrap justify-between gap-4">
         <div>
           <h2 className="break-words text-2xl font-semibold">{s.title}</h2>

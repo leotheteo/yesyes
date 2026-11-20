@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Basket, Check } from "@phosphor-icons/react";
 import { type HubRecord } from "@/lib/models";
 import { records, useHub, money } from "./context";
@@ -19,6 +19,18 @@ export function Shopping() {
   const lists = records(snapshot, "list"),
     items = records(snapshot, "item");
   const [chosen, setChosen] = useState("");
+  useEffect(() => {
+    const id = new URLSearchParams(window.location.search).get("list");
+    if (id) setChosen(id);
+  }, []);
+  useEffect(() => {
+    if (window.location.hash)
+      requestAnimationFrame(() =>
+        document
+          .getElementById(window.location.hash.slice(1))
+          ?.scrollIntoView({ block: "center" }),
+      );
+  }, [chosen]);
   const selected = lists.find((l) => l.id === chosen) ?? lists[0];
   const activeItems = items.filter((i) => i.data.listId === selected?.id);
   const remaining = activeItems.filter((i) => !i.data.checked);
@@ -144,7 +156,7 @@ export function Shopping() {
 function ItemRow({ item }: { item: HubRecord<"item"> }) {
   const { run, mutate, pending } = useHub();
   return (
-    <div className="py-3">
+    <div id={item.id} className="py-3">
       <div className="flex items-start gap-4">
         <input
           type="checkbox"

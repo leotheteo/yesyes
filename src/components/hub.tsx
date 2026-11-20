@@ -1,6 +1,7 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   House,
   ForkKnife,
@@ -12,6 +13,7 @@ import {
   SignOut,
   WifiSlash,
   X,
+  MagnifyingGlass,
 } from "@phosphor-icons/react";
 import type { HubRecord, Snapshot } from "@/lib/models";
 import { api, HubContext } from "./context";
@@ -24,6 +26,7 @@ import { Calendar } from "./calendar";
 import { Media } from "./media";
 import { Settings } from "./settings";
 import { Home } from "./home";
+import { Search } from "./search";
 
 const nav = [
   { title: "Home", href: "/", icon: House },
@@ -33,6 +36,17 @@ const nav = [
   { title: "Calendar", href: "/calendar", icon: CalendarBlank },
 ];
 export function Hub({ section = "home" }: { section?: string }) {
+  const router = useRouter();
+  useEffect(() => {
+    const listener = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        router.push("/search");
+      }
+    };
+    window.addEventListener("keydown", listener);
+    return () => window.removeEventListener("keydown", listener);
+  }, [router]);
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
   const [loading, setLoading] = useState(true),
     [signedOut, setSignedOut] = useState(false);
@@ -202,6 +216,13 @@ export function Hub({ section = "home" }: { section?: string }) {
               )}
             </Link>
             <Link
+              href="/search"
+              className="rounded-md p-3 hover:bg-secondary"
+              aria-label="Search the hub"
+            >
+              <MagnifyingGlass size={20} />
+            </Link>
+            <Link
               href="/settings"
               className="rounded-md p-3 hover:bg-secondary"
               aria-label="Settings"
@@ -302,7 +323,9 @@ export function Hub({ section = "home" }: { section?: string }) {
           </div>
         )}
         <main id="content" tabIndex={-1} aria-busy={pending}>
-          {section === "home" ? (
+          {section === "search" ? (
+            <Search />
+          ) : section === "home" ? (
             <Home />
           ) : section === "shopping" ? (
             <Shopping />

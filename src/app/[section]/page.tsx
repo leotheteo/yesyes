@@ -14,6 +14,7 @@ export default async function Page({
       "calendar",
       "settings",
       "notifications",
+      "search",
     ].includes(section)
   )
     notFound();

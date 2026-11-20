@@ -95,12 +95,19 @@ export function mediaStatus(status?: number, requestStatus?: number) {
   if (status === 3 || requestStatus === 2) return "processing";
   return "requested";
 }
-export async function recentlyAdded() {
+export async function recentlyAdded(userId: string) {
   const c = await connection("jellyfin");
+  const profile = await db.jellyfinProfile.findUnique({ where: { userId } });
+  const scope = profile?.jellyfinUserId || c.userId;
+  assert(
+    scope,
+    409,
+    "Choose a default Jellyfin profile or link your account in Settings to see recent media.",
+  );
   const data = await upstream<
     { Id: string; Name: string; Type: string; DateCreated?: string }[]
   >(
-    `${c.url!.replace(/\/$/, "")}/Items/Latest?Limit=12&IncludeItemTypes=Movie,Series&GroupItems=true${c.userId ? `&UserId=${encodeURIComponent(c.userId)}` : ""}`,
+    `${c.url!.replace(/\/$/, "")}/Items/Latest?Limit=12&IncludeItemTypes=Movie,Series&GroupItems=true&UserId=${encodeURIComponent(scope)}`,
     { headers: { "X-Emby-Token": c.key } },
   );
   return data.map((m) => ({

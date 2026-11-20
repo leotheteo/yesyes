@@ -31,8 +31,12 @@ export default function Privacy() {
       </p>
       <p>
         Media searches and requests are sent to the configured Seerr server.
-        Recently added media comes from the configured Jellyfin server. Those
-        services apply their own access and retention settings.
+        Jellyfin library searches, title details, posters, and recently added
+        media come from the configured Jellyfin server. The hub stores assigned
+        Jellyfin profile IDs. Favorites and watch-history changes are sent to
+        the linked profile on that server. Those services apply their own access
+        and retention settings. File previews render in your browser without
+        sending attachments to a third-party viewer.
       </p>
       <p>
         The hub uses necessary session cookies. It contains no advertising or

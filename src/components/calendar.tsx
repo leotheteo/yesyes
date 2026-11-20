@@ -26,6 +26,7 @@ import {
   type Occurrence,
 } from "@/lib/calendar";
 import { api, records, useHub } from "./context";
+import { AttachmentPreview } from "./attachment-preview";
 import {
   DeleteRecord,
   Empty,
@@ -97,9 +98,7 @@ export function Calendar() {
   );
   return (
     <>
-      <PageTitle
-        title="Calendar"
-      />
+      <PageTitle title="Calendar" />
       <ToggleForm label="Create event">
         {(close) => <EventForm initialDate={day || today} close={close} />}
       </ToggleForm>
@@ -554,9 +553,19 @@ function Attachments({ eventId }: { eventId: string }) {
   const [file, setFile] = useState<File | null>(null),
     [progress, setProgress] = useState<number | null>(null),
     [confirm, setConfirm] = useState("");
+  const [preview, setPreview] = useState("");
+  const [openFromSearch, setOpenFromSearch] = useState(false);
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get("attachment");
+    if (params.get("event") === eventId && id) {
+      setPreview(id);
+      setOpenFromSearch(true);
+    }
+  }, [eventId]);
   const files = snapshot.attachments.filter((a) => a.eventId === eventId);
   return (
-    <details className="mt-6">
+    <details className="mt-6" open={openFromSearch || undefined}>
       <summary className="text-sm">
         <span className="inline-flex items-center gap-2">
           <Paperclip size={16} />
@@ -579,6 +588,17 @@ function Attachments({ eventId }: { eventId: string }) {
             <span className="subtle">
               {(a.size / 1024 / 1024).toFixed(1)} MB
             </span>
+            {(a.contentType.startsWith("image/") ||
+              ["application/pdf", "text/plain"].includes(a.contentType)) && (
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => setPreview(preview === a.id ? "" : a.id)}
+                aria-expanded={preview === a.id}
+              >
+                {preview === a.id ? "Close preview" : "Preview"}
+              </Button>
+            )}
             {confirm === a.id ? (
               <>
                 <Button
@@ -611,6 +631,15 @@ function Attachments({ eventId }: { eventId: string }) {
               >
                 <Trash />
               </Button>
+            )}
+            {preview === a.id && (
+              <div className="w-full min-w-0">
+                <AttachmentPreview
+                  id={a.id}
+                  filename={a.filename}
+                  contentType={a.contentType}
+                />
+              </div>
             )}
           </div>
         ))}

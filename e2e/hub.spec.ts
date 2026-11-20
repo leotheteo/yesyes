@@ -16,6 +16,10 @@ const db = new PrismaClient({
   adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }),
 });
 const password = "Local-testing-password-48392";
+const jfMina = "11111111111111111111111111111111",
+  jfSamir = "22222222222222222222222222222222";
+const jfFavorite = new Map<string, boolean>(),
+  jfPlayed = new Map<string, boolean>();
 let owner: APIRequestContext, member: APIRequestContext;
 let eventId = "",
   listId = "",
@@ -29,6 +33,29 @@ async function write(ctx: APIRequestContext, payload: unknown) {
   const r = await ctx.post("/api/records", { data: payload });
   expect(r.ok(), await r.text()).toBeTruthy();
   return r.json();
+}
+function samplePdf() {
+  const stream = "0.5 g 20 20 100 80 re f";
+  const objects = [
+    "<< /Type /Catalog /Pages 2 0 R >>",
+    "<< /Type /Pages /Kids [3 0 R 5 0 R] /Count 2 >>",
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 200] /Resources << >> /Contents 4 0 R >>",
+    `<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`,
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 200] /Resources << >> /Contents 6 0 R >>",
+    `<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`,
+  ];
+  let pdf = "%PDF-1.4\n";
+  const offsets = [0];
+  objects.forEach((value, i) => {
+    offsets.push(Buffer.byteLength(pdf));
+    pdf += `${i + 1} 0 obj\n${value}\nendobj\n`;
+  });
+  const xref = Buffer.byteLength(pdf);
+  pdf += `xref\n0 7\n0000000000 65535 f \n${offsets
+    .slice(1)
+    .map((o) => String(o).padStart(10, "0") + " 00000 n \n")
+    .join("")}trailer\n<< /Size 7 /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF`;
+  return Buffer.from(pdf);
 }
 test.describe.serial("household", () => {
   test.beforeAll(async () => {
@@ -90,6 +117,147 @@ test.describe.serial("household", () => {
       if (req.url?.startsWith("/Items/Latest")) {
         res.end(
           JSON.stringify([{ Id: "abc123", Name: "Test Film", Type: "Movie" }]),
+        );
+        return;
+      }
+      const remote = new URL(req.url || "/", "http://fixture");
+      const profile =
+        remote.searchParams.get("UserId") ||
+        remote.searchParams.get("userId") ||
+        jfMina;
+      const movies = [
+        {
+          Id: "abc123",
+          Name: "Test Film",
+          Type: "Movie",
+          Overview: "A family film.",
+          ProductionYear: 2024,
+          RunTimeTicks: 54000000000,
+          Genres: ["Drama"],
+          ImageTags: { Primary: "poster1" },
+          UserData: {
+            IsFavorite: jfFavorite.get(profile) || false,
+            Played: jfPlayed.get(profile) || false,
+            PlaybackPositionTicks: 27000000000,
+          },
+        },
+        { Id: "def456", Name: "Evening Film", Type: "Movie", Genres: [] },
+        { Id: "series01", Name: "Test Series", Type: "Series", Genres: [] },
+      ];
+      if (remote.pathname === "/Users") {
+        res.end(
+          JSON.stringify([
+            { Id: jfMina, Name: "Mina", Policy: {} },
+            { Id: jfSamir, Name: "Samir", Policy: {} },
+          ]),
+        );
+        return;
+      }
+      if (
+        remote.pathname === `/Users/${jfMina}` ||
+        remote.pathname === `/Users/${jfSamir}`
+      ) {
+        res.end(
+          JSON.stringify({
+            Id: remote.pathname.split("/")[2],
+            Name: "Profile",
+          }),
+        );
+        return;
+      }
+      if (/^\/Users\/[^/]+\/Views$/.test(remote.pathname)) {
+        res.end(
+          JSON.stringify({
+            Items: [
+              { Id: "library123", Name: "Movies", Type: "CollectionFolder" },
+            ],
+          }),
+        );
+        return;
+      }
+      const itemPath = /^\/Users\/([^/]+)\/Items\/([^/]+)$/.exec(
+        remote.pathname,
+      );
+      if (itemPath) {
+        const p = itemPath[1];
+        const movie = movies.find((m) => m.Id === itemPath[2]);
+        const result = movie
+          ? {
+              ...movie,
+              UserData: {
+                IsFavorite: jfFavorite.get(p) || false,
+                Played: jfPlayed.get(p) || false,
+              },
+            }
+          : itemPath[2] === "episode01"
+            ? {
+                Id: "episode01",
+                Name: "Episode one",
+                Type: "Episode",
+                SeriesName: "Test Series",
+                IndexNumber: 1,
+                ParentIndexNumber: 1,
+              }
+            : null;
+        res.statusCode = result ? 200 : 404;
+        res.end(JSON.stringify(result || {}));
+        return;
+      }
+      const change =
+        /^\/Users\/([^/]+)\/(FavoriteItems|PlayedItems)\/([^/]+)$/.exec(
+          remote.pathname,
+        );
+      if (change) {
+        (change[2] === "FavoriteItems" ? jfFavorite : jfPlayed).set(
+          change[1],
+          req.method === "POST",
+        );
+        res.statusCode = 204;
+        res.end();
+        return;
+      }
+      if (remote.pathname === "/Items" || remote.pathname === "/Items/Resume") {
+        const q = remote.searchParams.get("SearchTerm")?.toLowerCase();
+        let items = movies.filter(
+          (m) => !q || m.Name.toLowerCase().includes(q),
+        );
+        const type = remote.searchParams.get("IncludeItemTypes");
+        if (type) items = items.filter((m) => type.split(",").includes(m.Type));
+        if (remote.searchParams.get("Filters") === "IsFavorite")
+          items = items.filter((m) => m.UserData?.IsFavorite);
+        res.end(
+          JSON.stringify({ Items: items, TotalRecordCount: items.length }),
+        );
+        return;
+      }
+      if (
+        remote.pathname === "/Shows/NextUp" ||
+        remote.pathname === "/Shows/series01/Episodes"
+      ) {
+        res.end(
+          JSON.stringify({
+            Items: [
+              {
+                Id: "episode01",
+                Name: "Episode one",
+                Type: "Episode",
+                SeriesName: "Test Series",
+                IndexNumber: 1,
+                ParentIndexNumber: 1,
+              },
+            ],
+            TotalRecordCount: 1,
+          }),
+        );
+        return;
+      }
+      if (/^\/Items\/[^/]+\/Images\/Primary$/.test(remote.pathname)) {
+        res.setHeader("Content-Type", "image/png");
+        res.end(
+          Buffer.from(
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aQ1sAAAAASUVORK5CYII=",
+            "base64",
+          ),
         );
         return;
       }
@@ -377,6 +545,7 @@ test.describe.serial("household", () => {
           url: serviceUrl,
           key: "fixture-private-key",
           publicUrl: "https://media.example.test",
+          ...(id === "jellyfin" ? { userId: jfMina } : {}),
         },
       });
       expect(result.ok(), await result.text()).toBeTruthy();
@@ -617,6 +786,471 @@ test.describe.serial("household", () => {
     await expect(
       page.getByRole("navigation", { name: "Main navigation" }),
     ).toBeVisible();
+  });
+  test("attachment previews enforce access, ranges, and render PDF pages", async ({
+    page,
+    request,
+  }) => {
+    expect(
+      (await request.get(`/api/attachments/${attachmentId}/preview`)).status(),
+    ).toBe(401);
+    const text = await owner.get(`/api/attachments/${attachmentId}/preview`);
+    expect(await text.text()).toContain("Practice:");
+    const pdf = await owner.post("/api/attachments", {
+      multipart: {
+        eventId,
+        file: {
+          name: "practice-guide.pdf",
+          mimeType: "application/pdf",
+          buffer: samplePdf(),
+        },
+      },
+    });
+    expect(pdf.ok(), await pdf.text()).toBeTruthy();
+    const pdfId = (await pdf.json()).id;
+    const range = await owner.get(`/api/attachments/${pdfId}/preview`, {
+      headers: { Range: "bytes=0-9" },
+    });
+    expect(range.status()).toBe(206);
+    expect((await range.body()).length).toBe(10);
+    expect(range.headers()["cache-control"]).toContain("private");
+    await page.context().addCookies((await owner.storageState()).cookies);
+    await page.goto(`/calendar?event=${eventId}&attachment=${pdfId}`);
+    await expect(page.getByText("Page 1 of 2", { exact: true })).toBeVisible();
+    await expect(
+      page.getByText("Loading PDF page…", { exact: true }),
+    ).toHaveCount(0);
+    await page.getByRole("button", { name: "Next page", exact: true }).click();
+    await expect(page.getByText("Page 2 of 2", { exact: true })).toBeVisible();
+    await expect(
+      page.getByText("Loading PDF page…", { exact: true }),
+    ).toHaveCount(0);
+    expect(
+      await page
+        .getByRole("img", { name: "practice-guide.pdf, page 2" })
+        .evaluate((canvas: HTMLCanvasElement) => canvas.width),
+    ).toBeGreaterThan(0);
+    await page.screenshot({
+      path: "test-results/pdf-preview.png",
+      fullPage: true,
+    });
+  });
+  test("global search finds shared records and attachments without deleted data", async ({
+    page,
+  }) => {
+    const result = await owner.get("/api/search?q=Mandarins");
+    expect(result.ok(), await result.text()).toBeTruthy();
+    expect(
+      (await result.json()).hits.some((h: { id: string }) => h.id === itemId),
+    ).toBe(true);
+    const attachments = await (
+      await owner.get("/api/search?q=schedule.txt")
+    ).json();
+    expect(
+      attachments.hits.some((h: { id: string }) => h.id === attachmentId),
+    ).toBe(true);
+    const restaurant = await write(owner, {
+      action: "create",
+      kind: "restaurant",
+      data: { name: "Hiddenneedle" },
+    });
+    await write(owner, {
+      action: "delete",
+      kind: "restaurant",
+      id: restaurant.id,
+      revision: restaurant.revision,
+    });
+    expect(
+      (await (await owner.get("/api/search?q=Hiddenneedle")).json()).hits,
+    ).toEqual([]);
+    expect(
+      (
+        await (
+          await owner.get(`/api/search?q=${encodeURIComponent("' OR 1=1 --")}`)
+        ).json()
+      ).hits,
+    ).toEqual([]);
+    await page.context().addCookies((await owner.storageState()).cookies);
+    await page.goto("/search?q=Mandarins");
+    await page.getByRole("link").filter({ hasText: "Mandarins" }).click();
+    await expect(
+      page.getByRole("heading", { name: "Groceries", exact: true }),
+    ).toBeVisible();
+  });
+  test("Jellyfin profiles isolate personal state and expose library, episodes, and posters", async ({
+    request,
+  }) => {
+    const people = await db.user.findMany();
+    const mina = people.find((p) => p.email === "mina@example.test")!,
+      samir = people.find((p) => p.email === "samir@example.test")!;
+    expect((await member.get("/api/jellyfin?view=profiles")).status()).toBe(
+      403,
+    );
+    expect(
+      (
+        await member.post("/api/jellyfin", {
+          data: { action: "favorite", itemId: "abc123", value: true },
+        })
+      ).status(),
+    ).toBe(409);
+    for (const [userId, jellyfinUserId] of [
+      [mina.id, jfMina],
+      [samir.id, jfSamir],
+    ]) {
+      const result = await owner.post("/api/jellyfin", {
+        data: { action: "profile", userId, jellyfinUserId },
+      });
+      expect(result.ok(), await result.text()).toBeTruthy();
+    }
+    const library = await owner.get("/api/jellyfin");
+    expect(library.ok(), await library.text()).toBeTruthy();
+    expect((await library.json()).items.length).toBe(3);
+    expect((await owner.get("/api/jellyfin?view=libraries")).ok()).toBeTruthy();
+    expect((await owner.get("/api/jellyfin?view=resume")).ok()).toBeTruthy();
+    expect(
+      (
+        await (
+          await owner.get("/api/jellyfin?view=episodes&parent=series01")
+        ).json()
+      ).items[0].type,
+    ).toBe("Episode");
+    expect(
+      (
+        await owner.post("/api/jellyfin", {
+          data: { action: "favorite", itemId: "abc123", value: true },
+        })
+      ).ok(),
+    ).toBeTruthy();
+    expect(
+      (await (await owner.get("/api/jellyfin?view=detail&id=abc123")).json())
+        .item.favorite,
+    ).toBe(true);
+    expect(
+      (await (await member.get("/api/jellyfin?view=detail&id=abc123")).json())
+        .item.favorite,
+    ).toBe(false);
+    expect(
+      (
+        await owner.post("/api/jellyfin", {
+          data: { action: "played", itemId: "abc123", value: true },
+        })
+      ).ok(),
+    ).toBeTruthy();
+    expect(
+      (await (await owner.get("/api/jellyfin?view=detail&id=abc123")).json())
+        .item.played,
+    ).toBe(true);
+    expect((await request.get("/api/jellyfin/images/abc123")).status()).toBe(
+      401,
+    );
+    expect(
+      (await owner.get("/api/jellyfin/images/abc123")).headers()[
+        "content-type"
+      ],
+    ).toBe("image/png");
+  });
+  test("watch votes enforce the winning title and create one calendar event", async () => {
+    let room = await (
+      await owner.post("/api/watch", {
+        data: {
+          action: "create",
+          title: "Weekend film",
+          closesAt: new Date(Date.now() + 3600000).toISOString(),
+        },
+      })
+    ).json();
+    const act = async (ctx: APIRequestContext, action: string, extra = {}) => {
+      const result = await ctx.post("/api/watch", {
+        data: { action, id: room.id, revision: room.revision, ...extra },
+      });
+      expect(result.ok(), await result.text()).toBeTruthy();
+      room = await result.json();
+    };
+    await act(owner, "nominate", { itemId: "abc123" });
+    await act(member, "nominate", { itemId: "def456" });
+    await act(owner, "vote", { itemId: "abc123" });
+    await act(member, "vote", { itemId: "abc123" });
+    const when = {
+      date: new Date(Date.now() + 2 * 86400000).toISOString().slice(0, 10),
+      time: "19:00",
+    };
+    expect(
+      (
+        await member.post("/api/watch", {
+          data: {
+            action: "schedule",
+            id: room.id,
+            revision: room.revision,
+            itemId: "abc123",
+            ...when,
+          },
+        })
+      ).status(),
+    ).toBe(403);
+    expect(
+      (
+        await owner.post("/api/watch", {
+          data: {
+            action: "schedule",
+            id: room.id,
+            revision: room.revision,
+            itemId: "def456",
+            ...when,
+          },
+        })
+      ).status(),
+    ).toBe(409);
+    await act(owner, "schedule", {
+      itemId: "abc123",
+      ...when,
+      location: "Living room",
+    });
+    const event = await db.record.findUniqueOrThrow({
+      where: { id: room.data.eventId },
+    });
+    expect((event.data as { title: string }).title).toBe("Weekend film");
+    expect(
+      (
+        await owner.post("/api/watch", {
+          data: {
+            action: "schedule",
+            id: room.id,
+            revision: room.revision,
+            itemId: "abc123",
+            ...when,
+          },
+        })
+      ).status(),
+    ).toBe(409);
+  });
+  test("account controls revoke links and disable access without removing shared content", async () => {
+    const snap = await (await owner.get("/api/snapshot")).json();
+    const person = await db.user.findUniqueOrThrow({
+      where: { email: "samir@example.test" },
+    });
+    expect(
+      (
+        await member.post("/api/accounts", {
+          data: { action: "disable", userId: snap.user.id },
+        })
+      ).status(),
+    ).toBe(403);
+    expect(
+      (
+        await owner.post("/api/accounts", {
+          data: { action: "disable", userId: snap.user.id },
+        })
+      ).status(),
+    ).toBe(409);
+    const invite = await (
+      await owner.post("/api/access", {
+        data: { action: "invite", email: "unused@example.test" },
+      })
+    ).json();
+    const linkToken = new URL(invite.url).searchParams.get("token")!;
+    const link = await db.accessLink.findUniqueOrThrow({
+      where: { tokenHash: tokenHash(linkToken) },
+    });
+    expect(
+      (
+        await owner.post("/api/accounts", {
+          data: { action: "revokeLink", id: link.id },
+        })
+      ).ok(),
+    ).toBeTruthy();
+    expect((await owner.get(`/api/access?token=${linkToken}`)).status()).toBe(
+      400,
+    );
+    expect(
+      (
+        await owner.post("/api/accounts", {
+          data: { action: "disable", userId: person.id },
+        })
+      ).ok(),
+    ).toBeTruthy();
+    expect((await member.get("/api/snapshot")).status()).toBe(401);
+    expect(
+      (
+        await member.post("/api/auth/sign-in/email", {
+          data: { email: person.email, password },
+        })
+      ).status(),
+    ).toBe(403);
+    expect(await db.record.count({ where: { id: itemId } })).toBe(1);
+    expect(
+      (
+        await owner.post("/api/accounts", {
+          data: { action: "enable", userId: person.id },
+        })
+      ).ok(),
+    ).toBeTruthy();
+    expect(
+      (
+        await member.post("/api/auth/sign-in/email", {
+          data: { email: person.email, password },
+        })
+      ).ok(),
+    ).toBeTruthy();
+    const sessions = await (await member.get("/api/accounts")).json();
+    expect(
+      sessions.sessions.every(
+        (s: { userId: string }) => s.userId === person.id,
+      ),
+    ).toBe(true);
+  });
+  test("library and watch-together controls complete a movie-night flow", async ({
+    page,
+  }) => {
+    await page.context().addCookies((await owner.storageState()).cookies);
+    await page.goto("/media?item=abc123");
+    await page
+      .getByRole("button", { name: "Remove favorite", exact: true })
+      .click();
+    await expect(
+      page.getByRole("button", { name: "Add favorite", exact: true }),
+    ).toBeVisible();
+    await page
+      .getByRole("button", { name: "Mark unwatched", exact: true })
+      .click();
+    await expect(
+      page.getByRole("button", { name: "Mark watched", exact: true }),
+    ).toBeVisible();
+    await page.goto("/media?tab=watch");
+    await page
+      .getByRole("button", { name: "Start watch vote", exact: true })
+      .click();
+    await page
+      .getByLabel("Movie night name", { exact: true })
+      .fill("Browser movie night");
+    await page
+      .getByRole("button", { name: "Start watch vote", exact: true })
+      .click();
+    const room = page.locator("section").filter({
+      has: page.getByRole("heading", {
+        name: "Browser movie night",
+        exact: true,
+      }),
+    });
+    await room
+      .getByRole("button", { name: "Nominate from Jellyfin", exact: true })
+      .click();
+    const movie = room.getByRole("article").filter({
+      has: page.getByRole("button", { name: "Open Test Film", exact: true }),
+    });
+    await movie.getByRole("button", { name: "Nominate", exact: true }).click();
+    await room.getByRole("button", { name: "Vote", exact: true }).click();
+    await expect(
+      room.getByRole("button", { name: "Your vote", exact: true }),
+    ).toHaveAttribute("aria-pressed", "true");
+    await room
+      .getByRole("button", { name: "Schedule movie night", exact: true })
+      .click();
+    await room
+      .getByLabel("Movie night date", { exact: true })
+      .fill(new Date(Date.now() + 2 * 86400000).toISOString().slice(0, 10));
+    await room
+      .getByRole("button", { name: "Add movie night to Calendar", exact: true })
+      .click();
+    await room
+      .getByRole("link", { name: "Open calendar event", exact: true })
+      .click();
+    await expect(
+      page.getByRole("heading", { name: "Browser movie night", exact: true }),
+    ).toBeVisible();
+  });
+  test("new screens remain accessible at narrow widths", async ({ page }) => {
+    await page.context().addCookies((await owner.storageState()).cookies);
+    await page.setViewportSize({ width: 320, height: 900 });
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    for (const path of [
+      "/search?q=Film",
+      "/media",
+      "/media?tab=watch",
+      "/settings",
+    ]) {
+      await page.goto(path);
+      await expect(
+        page.getByRole("navigation", { name: "Main navigation" }),
+      ).toBeVisible();
+      if (path === "/media")
+        await expect(
+          page.getByRole("button", { name: "Open Test Film", exact: true }),
+        ).toBeVisible();
+      if (path === "/settings")
+        await expect(
+          page.getByRole("heading", { name: "Active sessions", exact: true }),
+        ).toBeVisible();
+      expect(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth <= window.innerWidth,
+        ),
+      ).toBe(true);
+      const result = await new AxeBuilder({ page })
+        .withTags(["wcag2a", "wcag2aa", "wcag21aa"])
+        .analyze();
+      expect(result.violations.map((v) => `${v.id}: ${v.description}`)).toEqual(
+        [],
+      );
+      await page.screenshot({
+        path: `test-results/feature-${path.includes("watch") ? "watch" : path.includes("search") ? "search" : path.includes("settings") ? "accounts" : "library"}.png`,
+        fullPage: true,
+      });
+    }
+  });
+  test("session revocation and account removal preserve shared records", async () => {
+    const accounts = await (await member.get("/api/accounts")).json();
+    const session = accounts.sessions[0];
+    expect(session.token).toBeUndefined();
+    expect(
+      (
+        await owner.post("/api/accounts", {
+          data: { action: "revokeSession", id: session.id },
+        })
+      ).ok(),
+    ).toBeTruthy();
+    expect((await member.get("/api/snapshot")).status()).toBe(401);
+    expect(
+      (
+        await member.post("/api/auth/sign-in/email", {
+          data: { email: "samir@example.test", password },
+        })
+      ).ok(),
+    ).toBeTruthy();
+    const person = await db.user.create({
+      data: {
+        id: "temporary-account",
+        name: "Temporary",
+        email: "temporary@example.test",
+      },
+    });
+    const shared = await db.record.create({
+      data: {
+        kind: "list",
+        createdBy: person.id,
+        data: { name: "Saved shared list" },
+      },
+    });
+    expect(
+      (
+        await owner.post("/api/accounts", {
+          data: { action: "remove", userId: person.id },
+        })
+      ).ok(),
+    ).toBeTruthy();
+    expect(await db.user.findUnique({ where: { id: person.id } })).toBeNull();
+    expect(
+      await db.record.findUnique({ where: { id: shared.id } }),
+    ).not.toBeNull();
+    const household = await db.household.findUniqueOrThrow({
+      where: { id: "family" },
+    });
+    expect(
+      (
+        await owner.post("/api/accounts", {
+          data: { action: "remove", userId: household.ownerId },
+        })
+      ).status(),
+    ).toBe(409);
   });
   test("password reset invalidates sessions", async () => {
     const reset = await owner.post("/api/access", {

@@ -7,15 +7,17 @@ datasource db {
 }
 
 model User {
-  id            String    @id
-  name          String
-  email         String    @unique
-  emailVerified Boolean   @default(false)
-  image         String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  sessions      Session[]
-  accounts      Account[]
+  id              String           @id
+  name            String
+  email           String           @unique
+  emailVerified   Boolean          @default(false)
+  image           String?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  disabled        Boolean          @default(false)
+  sessions        Session[]
+  accounts        Account[]
+  jellyfinProfile JellyfinProfile?
 }
 
 model Session {
@@ -155,4 +157,11 @@ model RateLimit {
   key         String @unique
   count       Int
   lastRequest BigInt
+}
+
+model JellyfinProfile {
+  userId         String   @id
+  jellyfinUserId String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  updatedAt      DateTime @updatedAt
 }

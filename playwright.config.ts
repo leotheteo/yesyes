@@ -4,6 +4,7 @@ process.env.DATABASE_URL =
   process.env.TEST_DATABASE_URL ||
   "postgresql://family:local-development-only@127.0.0.1:55432/family_e2e";
 process.env.BETTER_AUTH_URL = "http://localhost:3100";
+process.env.UPLOAD_DIR = "./test-data/uploads";
 export default defineConfig({
   testDir: "./e2e",
   workers: 1,

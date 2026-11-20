@@ -59,6 +59,36 @@ The worker creates in-app reminders once per recipient, occurrence, and reminder
 
 Each event supports up to 50 attachments of 25 MB each: PNG, JPG, WebP, GIF, PDF, DOCX, XLSX, PPTX, and UTF-8 TXT. File signatures are checked server-side. Files download as attachments; this is not a malware scanner. All household members can upload, download, and remove files. File deletion requires confirmation. Attachments belong to the event series and are shared across occurrences. Deleted events retain files so event deletion can be undone.
 
+## Search, accounts, and media
+
+The search button in the header, or Ctrl+K, opens global search. It searches event titles, notes and locations, shopping lists and items, restaurant details, food and watch votes, media requests, and attachment filenames. Deleted records are excluded. It does not index file contents. When Jellyfin is configured, library results load separately so a Jellyfin outage does not block household results.
+
+Settings includes display names, active browser sessions, invitation/reset-link revocation, and member access controls. Members manage their own name and sessions. The account that created the hub can manage other accounts, disable or restore access, and remove accounts. Disabling access immediately removes sessions and unused account links. Removing an account preserves shared records and their history. The initial account cannot disable or remove itself.
+
+Jellyfin supports library browsing, title search, movie/series filters, library selection, details, episode lists, posters, continue watching, next episodes, favorites, and watched status. Set a default Jellyfin profile ID in the connection settings for shared browsing. Use **Load Jellyfin profiles** in Settings to assign each family member their own Jellyfin profile. Personal favorites and watch-history changes require this explicit mapping. An unlinked account can browse the configured default profile but cannot change its watch history or favorites. Recent titles and poster access respect the linked or default profile. The service key needs permission to read the configured profiles and perform their library operations. Keys remain on the server, including for poster requests.
+
+Playback opens Jellyfin in another tab and uses that client's Jellyfin sign-in. The hub does not send the service API key to the player or proxy video streams.
+
+**Watch together** in Media creates a family vote with up to 50 nominated movies or individual episodes from Jellyfin. Each person has one editable vote. The creator schedules a title with the most votes, choosing among tied titles when needed. Scheduling closes the vote and creates a normal Pacific-time calendar event with the existing reminder system. Calendar edits are separate from the vote history. Removing a watch vote does not remove its scheduled event. Playback synchronization is not included.
+
+Images, PDFs, and text files have authenticated inline previews. PDFs render locally using PDF.js with page controls; they are not uploaded to a third-party viewer. Text previews show up to 200 KB, with the complete file available to download. Office documents remain downloadable. File previews and range requests require the same account and live-event checks as downloads.
+
+New endpoints:
+
+| Method   | Route                          | Purpose                                               |
+| -------- | ------------------------------ | ----------------------------------------------------- |
+| GET/POST | `/api/accounts`                | Session, name, invitation, and account controls       |
+| GET      | `/api/search?q=...`            | Shared household search                               |
+| GET      | `/api/attachments/:id/preview` | Image, PDF, and text preview                          |
+| GET      | `/api/jellyfin`                | Library, resume, next episodes, details, and profiles |
+| POST     | `/api/jellyfin`                | Profile links, favorites, and watched status          |
+| GET      | `/api/jellyfin/images/:id`     | Authenticated poster proxy                            |
+| POST     | `/api/watch`                   | Create, nominate, vote, withdraw, and schedule        |
+
+For Jellyfin reads, use `view=library|libraries|resume|next|episodes|detail|profiles`. Library browsing supports `q`, `page`, `parent`, `type=all|Movie|Series`, and `filter=all|favorites|unwatched`. Profiles are listed and assigned only through the initial account. Watch mutations use the watch record's current revision, and the generic records endpoint cannot bypass watch-vote rules.
+
+The upgrade adds the `User.disabled` column and `JellyfinProfile` table through a migration. Existing accounts remain enabled. No new environment secrets are needed. PDF workers and rendering assets are copied from the installed package during build and before development startup.
+
 ## Back up and restore
 
 Back up the database, attachments, and `.env` together. The encryption key is required to read saved connections. Keep backup files private.

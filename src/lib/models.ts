@@ -110,6 +110,24 @@ export const itemSchema = z.object({
   price: z.number().min(0).max(100000).nullable().default(null),
   checked: z.boolean().default(false),
 });
+export const watchSessionSchema = z.object({
+  title: text,
+  closesAt: z.iso.datetime(),
+  nominations: z
+    .array(
+      z.object({
+        itemId: text,
+        title: text,
+        type: z.enum(["Movie", "Episode"]),
+        proposedBy: text,
+      }),
+    )
+    .max(50)
+    .default([]),
+  votes: z.record(z.string(), z.string()).default({}),
+  selectedId: z.string().nullable().default(null),
+  eventId: z.string().nullable().default(null),
+});
 export const schemas = {
   restaurant: restaurantSchema,
   preference: preferenceSchema,
@@ -117,6 +135,7 @@ export const schemas = {
   event: eventSchema,
   list: listSchema,
   item: itemSchema,
+  watchSession: watchSessionSchema,
 };
 export type Kind = keyof typeof schemas;
 export const kindSchema = z.enum([
@@ -126,6 +145,7 @@ export const kindSchema = z.enum([
   "event",
   "list",
   "item",
+  "watchSession",
 ]);
 export type Restaurant = z.infer<typeof restaurantSchema>;
 export type Preference = z.infer<typeof preferenceSchema>;
@@ -148,6 +168,7 @@ export type Snapshot = {
   household: string;
   user: Person;
   isOwner: boolean;
+  jellyfinProfileId: string | null;
   people: Person[];
   records: HubRecord[];
   attachments: {

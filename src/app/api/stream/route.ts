@@ -30,6 +30,14 @@ export async function GET(request: Request) {
               close();
               return;
             }
+            const account = await db.user.findUnique({
+              where: { id: session.user.id },
+              select: { disabled: true },
+            });
+            if (!account || account.disabled) {
+              close();
+              return;
+            }
             const household = await db.household.findUnique({
               where: { id: "family" },
               select: { revision: true },

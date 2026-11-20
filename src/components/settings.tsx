@@ -4,6 +4,7 @@ import { api, useHub } from "./context";
 import { Field, PageTitle, Submit } from "./common";
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
+import { AccountControls } from "./account-controls";
 export function Settings() {
   const { snapshot, run, pending } = useHub();
   const [link, setLink] = useState("");
@@ -16,26 +17,25 @@ export function Settings() {
             <h2 className="mb-6 text-xl font-semibold">Your account</h2>
             <p className="font-medium">{snapshot.user.name}</p>
             <p className="subtle mt-2 break-all">{snapshot.user.email}</p>
-            <p className="subtle mt-4">
-              Pacific time
-            </p>
+            <p className="subtle mt-4">Pacific time</p>
+            {snapshot.integrations.includes("jellyfin") && (
+              <p className="subtle mt-4">
+                {snapshot.jellyfinProfileId
+                  ? "Jellyfin profile linked."
+                  : snapshot.isOwner
+                    ? "Link your Jellyfin profile below for personal watch history and favorites."
+                    : "Ask the person who set up the hub to link your Jellyfin profile for personal watch history and favorites."}
+              </p>
+            )}
           </section>
-          <section className="panel">
-            <h2 className="mb-4 text-xl font-semibold">Family</h2>
-            {snapshot.people.map((p) => (
-              <div className="row" key={p.id}>
-                <div className="min-w-0">
-                  <p className="break-words">{p.name}</p>
-                  <p className="subtle mt-1 break-all">{p.email}</p>
-                </div>
-              </div>
-            ))}
-          </section>
+          <AccountControls />
         </div>
         {snapshot.isOwner && (
           <div className="grid gap-6">
             <section className="panel">
-              <h2 className="mb-6 text-xl font-semibold">Invites and password resets</h2>
+              <h2 className="mb-6 text-xl font-semibold">
+                Invites and password resets
+              </h2>
               <form
                 className="grid gap-4"
                 onSubmit={(e) => {
@@ -168,7 +168,7 @@ export function Settings() {
                           placeholder="https://jellyfin.example.com"
                         />
                       </Field>
-                      <Field label="Jellyfin user ID (optional)">
+                      <Field label="Default Jellyfin profile ID (optional)">
                         <Input name="userId" />
                       </Field>
                     </>

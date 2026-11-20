@@ -33,6 +33,12 @@ const inputSchema = z.object({
 });
 export async function mutate(input: unknown, userId: string) {
   const command = inputSchema.parse(input);
+  assert(
+    command.kind !== "watchSession" ||
+      ["delete", "restore"].includes(command.action),
+    400,
+    "Use Watch together to change a movie vote.",
+  );
   return db.$transaction(
     async (tx) => {
       // One household row serializes writes, including cross-record rules and SSE revisions.
@@ -77,7 +83,7 @@ export async function mutate(input: unknown, userId: string) {
             "Choose a future closing time.",
           );
           const count = await tx.user.count({
-            where: { id: { in: s.participants } },
+            where: { id: { in: s.participants }, disabled: false },
           });
           assert(
             count === new Set(s.participants).size,
@@ -136,6 +142,12 @@ export async function mutate(input: unknown, userId: string) {
         "This item was deleted. Refresh to see the current list.",
       );
       if (command.action === "delete" || command.action === "restore") {
+        if (command.kind === "watchSession")
+          assert(
+            record.createdBy === userId,
+            403,
+            "Only the creator can remove this watch vote.",
+          );
         assert(
           !["preference", "voteSession"].includes(command.kind),
           400,

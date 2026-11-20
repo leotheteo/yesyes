@@ -6,6 +6,8 @@ import { api, useHub } from "./context";
 import { Empty, Field, PageTitle } from "./common";
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
+import { LibraryBrowser } from "./library";
+import { WatchTogether } from "./watch";
 
 type Result = {
   id: number;
@@ -15,6 +17,47 @@ type Result = {
   status?: number;
 };
 export function Media() {
+  const [tab, setTab] = useState("library");
+  useEffect(() => {
+    const p = new URLSearchParams(window.location.search);
+    const t = p.get("tab");
+    if (t && ["library", "requests", "watch"].includes(t)) setTab(t);
+  }, []);
+  return (
+    <>
+      <PageTitle title="Media" />
+      <div
+        className="mb-8 flex flex-wrap gap-2"
+        role="group"
+        aria-label="Media view"
+      >
+        {[
+          { id: "library", label: "Jellyfin" },
+          { id: "requests", label: "Requests" },
+          { id: "watch", label: "Watch together" },
+        ].map((t) => (
+          <Button
+            key={t.id}
+            size="sm"
+            variant={tab === t.id ? "secondary" : "ghost"}
+            aria-pressed={tab === t.id}
+            onClick={() => setTab(t.id)}
+          >
+            {t.label}
+          </Button>
+        ))}
+      </div>
+      {tab === "library" ? (
+        <LibraryBrowser />
+      ) : tab === "watch" ? (
+        <WatchTogether />
+      ) : (
+        <MediaRequests />
+      )}
+    </>
+  );
+}
+function MediaRequests() {
   const { snapshot, pending, run } = useHub();
   const [query, setQuery] = useState(""),
     [results, setResults] = useState<Result[]>([]),
@@ -24,7 +67,6 @@ export function Media() {
   const [selectedSeason, setSelectedSeason] = useState(0);
   return (
     <>
-      <PageTitle title="Media" />
       {!snapshot.integrations.includes("seerr") ? (
         <section className="panel mb-8">
           <FilmSlate size={32} className="text-primary" />
@@ -182,7 +224,7 @@ export function Media() {
             <Empty>No media requests.</Empty>
           ) : (
             snapshot.requests.map((r) => (
-              <div key={r.id} className="row flex-wrap">
+              <div key={r.id} id={r.id} className="row flex-wrap">
                 <div className="min-w-0 flex-1">
                   <p className="break-words font-medium">
                     {r.title}
@@ -235,7 +277,7 @@ export function RecentMedia() {
     return () => {
       active = false;
     };
-  }, [configured]);
+  }, [configured, snapshot.jellyfinProfileId]);
   if (!configured)
     return (
       <Empty>

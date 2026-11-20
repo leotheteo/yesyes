@@ -8,6 +8,15 @@ import { AppError, assert } from "./errors";
 export async function member() {
   const session = await auth.api.getSession({ headers: await headers() });
   assert(session?.user, 401, "Sign in to continue.");
+  const account = await db.user.findUnique({
+    where: { id: session.user.id },
+    select: { disabled: true },
+  });
+  assert(
+    account && !account.disabled,
+    401,
+    "This account no longer has access. Ask for access before signing in again.",
+  );
   return session.user;
 }
 export async function owner() {

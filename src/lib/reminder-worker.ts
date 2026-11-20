@@ -10,7 +10,7 @@ export async function produceReminders(now = new Date()) {
       });
       const [events, people] = await Promise.all([
         tx.record.findMany({ where: { kind: "event", deletedAt: null } }),
-        tx.user.findMany({ select: { id: true } }),
+        tx.user.findMany({ where: { disabled: false }, select: { id: true } }),
       ]);
       const data = events.flatMap((row) =>
         reminders(row.id, eventSchema.parse(row.data), now).flatMap((r) =>

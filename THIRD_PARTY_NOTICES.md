@@ -1,5 +1,7 @@
 # Watermelon UI
 
+PDF previews use Mozilla PDF.js (`pdfjs-dist`), licensed under Apache License 2.0. Its license is included in the installed package and copied to `/pdf-assets/LICENSE` with the viewer assets during builds. PDF.js source: https://github.com/mozilla/pdf.js.
+
 The Button and Input components in `src/components/ui` are adapted from:
 
 https://github.com/WatermelonCorp/watermellon-registry/tree/main/src/components/ui

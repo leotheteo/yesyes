@@ -171,6 +171,10 @@ summary {
   border-radius: 8px;
   animation: pulse 2s cubic-bezier(0.32, 0.72, 0, 1) infinite;
 }
+progress { appearance: none; height: 8px; overflow: hidden; border: 0; border-radius: 4px; background: var(--secondary); }
+progress::-webkit-progress-bar { background: var(--background); }
+progress::-webkit-progress-value { background: var(--primary); }
+progress::-moz-progress-bar { background: var(--primary); }
 @keyframes pulse {
   50% {
     opacity: 0.5;

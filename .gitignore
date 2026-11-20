@@ -8,3 +8,5 @@ coverage/
 *.tsbuildinfo
 test-results/
 test-data/
+public/pdf.worker.min.mjs
+public/pdf-assets/

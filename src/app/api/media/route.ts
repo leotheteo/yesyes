@@ -8,7 +8,7 @@ export async function GET(request: Request) {
     await rate(`media:${user.id}`, 90);
     const url = new URL(request.url);
     if (url.searchParams.get("recent") === "1")
-      return json(await recentlyAdded());
+      return json(await recentlyAdded(user.id));
     if (url.searchParams.has("id")) {
       const id = z.coerce
         .number()

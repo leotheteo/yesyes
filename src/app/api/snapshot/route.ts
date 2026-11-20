@@ -16,8 +16,10 @@ export async function GET() {
           notifications,
           requests,
           integrations,
+          profile,
         ] = await Promise.all([
           tx.user.findMany({
+            where: { disabled: false },
             select: { id: true, name: true, email: true },
             orderBy: { name: "asc" },
           }),
@@ -45,6 +47,10 @@ export async function GET() {
             take: 100,
           }),
           tx.integration.findMany({ select: { id: true } }),
+          tx.jellyfinProfile.findUnique({
+            where: { userId: user.id },
+            select: { jellyfinUserId: true },
+          }),
         ]);
         const liveEvents = new Set(
           records.filter((r) => r.kind === "event").map((r) => r.id),
@@ -60,6 +66,7 @@ export async function GET() {
           notifications,
           requests,
           integrations: integrations.map((i) => i.id),
+          jellyfinProfileId: profile?.jellyfinUserId || null,
         };
       },
       { isolationLevel: "RepeatableRead" },

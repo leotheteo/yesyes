@@ -7,3 +7,5 @@ uploads
 coverage
 test-results
 test-data
+public/pdf.worker.min.mjs
+public/pdf-assets
